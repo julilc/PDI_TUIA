@@ -102,8 +102,8 @@ plt.figure() , plt.imshow(examen, cmap = 'gray'), plt.show()
 ### Corrección de pregunta
 x1 = 20
 x2 = 250
-y1 = 55
-y2 = 163
+y1 = 442
+y2 = 550
 pregunta = examen[y1:y2,x1:x2]
 plt.figure() , plt.imshow(pregunta, cmap = 'gray'), plt.show()
 
@@ -134,9 +134,9 @@ def encontrar_lineas(img, bordes, r, t, tr):
             y2 = int(y0 - 1000 * (a))
 
             cv2.line(img_color, (x1,y1), (x2,y2), (0,0,255), 1)
-
+    cord_linea = [x1,x2,y1,y2]
     imshow(img_color)
-    return lineas
+    return lineas, cord_linea
 
 def filtra_bordes(bordes, umbral = 10):
     ###
@@ -168,42 +168,107 @@ def dividir_pregunta(pregunta, lineas):
     sub_pregunta = pregunta[0:y_max, 0:w]
     return sub_pregunta
 
-def componentes_conectadas_pregunta(s_preg, conectivity = 900):
+def componentes_conectadas_pregunta(s_preg, conec: int = 8, min_area : int = 5):
+    
     # Aplicar umbral binario para binarizar la imagen
-    _, binarizada = cv2.threshold(s_preg, 150, 200, cv2.THRESH_BINARY)
+    _, binarizada = cv2.threshold(s_preg, 238, 238, cv2.THRESH_BINARY)
+    
     # Obtener las componentes conectadas y estadísticas
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binarizada, conectivity , cv2.CV_32S)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binarizada, connectivity=conec, ltype=cv2.CV_32S)
 
     # Crear una imagen en color para dibujar las componentes conectadas
     output_image = cv2.cvtColor(binarizada, cv2.COLOR_GRAY2BGR)
     
+    ix_area= (stats[:, -1] > min_area) & (stats[:, -1] < 40)
+    stats=stats[ix_area,:]
+    centroids = centroids[ix_area, :]
+
     # Recorremos todas las componentes conectadas (ignorando el fondo)
-    for i in range(1, num_labels):
+    for i in range(1, len(stats)-1):
         # Obtener las estadísticas para la componente actual
         x, y, w, h, area = stats[i]
         
+
         # Dibujar un rectángulo alrededor de la componente conectada
-        cv2.rectangle(output_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.rectangle(output_image, (x, y), (x + w, y + h), (0, 255, 0), 1)
         
         # Dibujar el centroide de la componente conectada
-        cx, cy = centroids[i]
-        cv2.circle(output_image, (int(cx), int(cy)), 1, (255, 0, 0), -1)
         
-        # Escribir el número de la componente conectada cerca del centroide
-        #cv2.putText(output_image, f'Componente {i}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
+        cx, cy = centroids[i]
+        print(cx,cy)
+        cv2.circle(output_image, (int(cx), int(cy)), 1, (255, 0, 0), -1)
+    
     # Retornar la imagen con las componentes conectadas dibujadas
     imshow(output_image)
+    return (centroids, stats)
 
 
+def encontrar_letra(centroids, stats, linea_respuesta):
+    stats_letras = []  # Lista de letras, donde cada letra será una lista de stats
+    x1, x2, y1, y2 = linea_respuesta
+    letra_stat = []  # Lista para almacenar los stats de una letra
+    ult_cx, ult_cy = 0, 0  # Para guardar el último centroide procesado
+    centroids_stats_ord= sorted(zip(centroids, stats), key=lambda cs: cs[0][0])
+    for i, (centroid,stat) in enumerate(centroids_stats_ord):
+        if stat[4]>100:
+            pass
+        else:
+            cx, cy = centroid
+            print(y2)
+            print(cy)
+            print(y2-cy)
+            # Verifica si el componente está dentro de la línea de respuesta y se encuentra suficientemente cerca en altura
+            if (y2 - cy) < 14 and cx > 106:
+                if len(letra_stat) == 0:
+                    # Si es el primer componente de la letra, lo añadimos
+                    letra_stat.append(stat)
+                elif abs(ult_cx - cx) < 10:
+                    # Si el nuevo componente está cerca del anterior, lo añadimos a la lista de stats de la letra actual
+                    letra_stat.append(stat)
+                else:
+                    # Si el componente no está cerca del anterior, guardamos la letra anterior y empezamos una nueva
+                    stats_letras.append(letra_stat)
+                    letra_stat = [stat]  # Empezamos una nueva letra con el componente actual
+                    
+                # Actualizamos el último centroide procesado
+                ult_cx, ult_cy = cx, cy
+        
+    # Si queda una letra en proceso, la añadimos
+    if len(letra_stat) != 0:
+        stats_letras.append(letra_stat)
 
-pregunta_canny = cv2.Canny(pregunta, threshold1=50, threshold2=100)
-lineas_h = encontrar_lineas(pregunta, pregunta_canny, 1, np.pi / 2, tr = 110)
+    return stats_letras
+
+def identificar_letra(letras):
+    for letra in letras:
+        print(letra) 
+        if len(letra) == 0:
+            print('No hay respuesta')
+        if len(letra) == 1:
+                print('c')
+            ### Ver si es C
+        if len(letra) == 3:
+            print('B')
+            
+
+
+pregunta_canny = cv2.Canny(pregunta, threshold1=0, threshold2=1000)
+imshow(pregunta_canny)
+lineas_h, cord_linea = encontrar_lineas(pregunta, pregunta_canny, 1, np.pi / 2, tr = 110)
 lineas_h = filtra_bordes(lineas_h, umbral = 10)
 sub_preg = dividir_pregunta(pregunta, lineas_h)
-componentes_conectadas_pregunta(sub_preg,  1)
+sub_preg_canny = cv2.Canny(sub_preg, threshold1= 150, threshold2=190)
+imshow(sub_preg)
+cen, stats = componentes_conectadas_pregunta(sub_preg_canny, conec= 8, min_area= 8)
+letra = encontrar_letra(cen,stats, cord_linea)
+len(letra)
+len(letra[1])
+identificar_letra(letra)
+
+
+
 pregunta_canny.shape
 imshow(pregunta)
-_, binarizada = cv2.threshold(sub_preg, 150, 200, cv2.THRESH_BINARY)
+_, binarizada = cv2.threshold(sub_preg, 238, 238, cv2.THRESH_BINARY)
 imshow(binarizada)
 
