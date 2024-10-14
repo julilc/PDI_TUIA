@@ -21,7 +21,7 @@ def imshow(img, new_fig=True, title=None, color_img=False, blocking=False, color
         plt.imshow(img)
     else:
         plt.imshow(img, cmap='gray')
-    plt.title(title)
+    #plt.title(title)
     if not ticks:
         plt.xticks([]), plt.yticks([])
     if colorbar:
@@ -90,18 +90,32 @@ plt.figure(), plt.imshow(img_ec, cmap = 'gray'), plt.show(block = True)
 
 
 
-######## PROBLEMA 2: CORRECCIÓN DE MULTIPLE CHOICE ########
+############################################################################################
+######################### PROBLEMA 2: CORRECCIÓN DE MULTIPLE CHOICE ########################
+############################################################################################
 
 #Carga de paths
 paths_img = ['examen_1.png', 'examen_2.png', 'examen_3.png', 'examen_4.png', 'examen_5.png']
 paths_img = ['./src/'+i for i in paths_img]
 paths_img[0]
 examen = cv2.imread(paths_img[1], cv2.IMREAD_GRAYSCALE)
-imshow(examen)
-x1 = [20,20,20,20,20,326,326,326,326,326 ]
-x2 = [255,255,255,255,255, 560,560,560,560,560]
-y1 = [59,183,312,440, 564,59,183,312,440, 564 ]
-y2 = [172,296, 421 ,550,671, 172,296, 421 , 550,671 ]
+#imshow(examen)
+
+
+################################# Encabezado #########################################
+
+
+
+################################# Recorte de respuestas ##############################
+
+
+
+############### Detección de Respuestas y corrección de preguntas ####################
+#Recorto manual respuestas para hacer este punto
+x1 = [20,20,20,20,20,324,324,324,324,324 ]
+x2 = [258,258,258,258,258, 562,562,562,562,562]
+y1 = [56,182,312,435, 561,56,182,312,435, 561 ]
+y2 = [172,298, 421 ,555,675, 172,298, 421 , 555,675 ]
 
 def recortar_preguntas():
     preguntas = []
@@ -112,14 +126,23 @@ def recortar_preguntas():
 
 preguntas = recortar_preguntas()
 
-for pregunta in preguntas:
-    imshow(pregunta)
+# for pregunta in preguntas:
+    #imshow(pregunta)
 
-def binarize(img):
+def binarize(img: np.array) -> np.array:
+    ###
+    #img: imagen en escala de grises
+    #img_bin : imagen binarizada
+    ###
     _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
     return img_bin
 
-def lineas_horizontales(img_bin):
+def lineas_horizontales(img_bin: np.array ) -> tuple:
+    ###
+    # img_bin : imagen binarizada.
+    # rect_mas_ancho : linea de respuesta del examen.
+    ###
+
     # Convertir la imagen en color
     img_s = cv2.cvtColor(img_bin.copy(), cv2.COLOR_GRAY2BGR)
 
@@ -153,45 +176,68 @@ def lineas_horizontales(img_bin):
     cv2.drawContours(img_s, contours, -1, (0, 255, 0), 1)  # Contornos en verde
 
     # Mostrar la imagen con contornos y el rectángulo más ancho
-    plt.figure(figsize=(10, 6))
-    plt.imshow(cv2.cvtColor(img_s, cv2.COLOR_BGR2RGB))
-    plt.title("Contornos Encontrados y Rectángulo Más Ancho")
-    plt.axis('off')  # Opcional: Oculta los ejes
-    plt.show()
+    #plt.figure(figsize=(10, 6))
+    #plt.imshow(cv2.cvtColor(img_s, cv2.COLOR_BGR2RGB))
+    #plt.title("Contornos Encontrados y Rectángulo Más Ancho")
+    # plt.axis('off')  # Opcional: Oculta los ejes
+    # plt.show()
 
     return rect_mas_ancho
 
-def recortar_pregunta(pregunta, linea_preg):
+def recortar_pregunta(pregunta: np.array, linea_preg: tuple) -> np.array:
+    ###
+    # pregunta: imagen escala de grises de pregunta del examen.
+    # linea_preg : linea horizontal de la pregunta del exament.
+    # sub_preguna: área de respuesta de la pregunta.
+    ###
+
+    #obtengo coordenadas de la linea
     x1,y1,w,h = linea_preg
+
+    #obtengo forma de la imagen de pregunta
     h, w = pregunta.shape
+    
+    #recorto la imagen obteniendo solo el área de respuesta
     sub_preg = pregunta[y1-14:y1-2, x1: w]
-    imshow(sub_preg)
+
+    #imshow(sub_preg)
     return sub_preg
 
-def detectar_letra(sub_preg):
-    # Binarizar la imagen
+
+def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
+    ###
+    # sub_pregunta : área de respuesta de la pregunta.
+    #dict_contornos: diccionario clave contorno padre, valor
+    # contornos hijos.
+    # contornos: total de contornos encontrados.
+    ###
+
+    # Binarizo la imagen
     sub_bin = binarize(sub_preg)
     
-    # Encontrar contornos y jerarquía
+    # Encuentro contornos y jerarquía
     contornos, jerarquia = cv2.findContours(sub_bin, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
     
-    # Crear una imagen en blanco para dibujar los contornos
+    # Crea una imagen para dibujar los contornos
     img_contornos = cv2.cvtColor(sub_bin, cv2.COLOR_GRAY2BGR)
     
-    # Inicializar el diccionario para guardar contornos padres e hijos
+    # Inicializo el diccionario para guardar contornos padres e hijos
     dict_contornos = {}
     padres = 0
     hijos = 0
-    # Dibujar contornos con diferentes colores
+
+    # Dibujo contornos con diferentes colores
     for i in range(len(contornos)):
+
         # Obtener información de jerarquía
         _, _, first_child, parent = jerarquia[0][i]
         
         if parent == -1:  # Contorno padre
             padres += 1
             color = (0, 0, 255)  # Rojo para contornos padres
-            dict_contornos[i] = []  # Inicializar la lista de hijos para este padre
-        else:  # Contorno hijo
+            dict_contornos[i] = []  # Inicializo la lista de hijos para este padre
+        else:  
+            # Contorno hijo
             hijos += 1
             color = (0, 255, 0)  # Verde para contornos hijos
             
@@ -202,57 +248,109 @@ def detectar_letra(sub_preg):
         cv2.drawContours(img_contornos, contornos, i, color, 2)  # Dibujar contornos con el color apropiado
 
     # Mostrar la imagen con contornos dibujados
-    print(f' padres: {padres}, hijos : {hijos}')
-    plt.figure(figsize=(10, 6))
-    plt.imshow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
-    plt.title("Contornos de Letras Detectados")
-    plt.axis('off')
-    plt.show()
+    # print(f' padres: {padres}, hijos : {hijos}')
+    #plt.figure(figsize=(10, 6))
+    # plt.imsow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
+    #plt.title("Contornos de Letras Detectados")
+    # plt.axis('off')
+    # plt.show()
 
     return dict_contornos, contornos
 
-def clasificar_letra(dict_contornos, contornos):
+def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
+    ###
+    #dict_contornos: diccionario clave contorno padre, valor
+    # contornos hijos.
+    # contornos: total de contornos encontrados.
+    # respuestas: letras encontradas; si no encuentra letras devuelve
+    # lista vacía.
+    ###
+
     respuestas = []
-    if len(dict_contornos) == 0:
+    if len(dict_contornos) == 0: ### si no se detecto una letra se devuelve la lista vacia
         return respuestas
     else:
         for key, value in dict_contornos.items():
-            if cv2.contourArea(contornos[key]) > 2:
+            if cv2.contourArea(contornos[key]) > 2: ## Filtro áreas menores a 2
+                
                 if len(value) == 0:
+                    #Si el no tiene hijos entonces la letra es C
                     respuestas.append('C')
+                
                 elif len(value) == 2:
+                    #Si tiene 2 hijos, la letra es B
                     respuestas.append('B')
+
+
                 elif  len(value) == 1:
+                    #Si tiene 1 hijo, hay que obtener la relación de área hijo/padre
+                    # para definir si es letra A o D
+
                     area_hijo = cv2.contourArea(contornos[value[0]])
                     area_padre = cv2.contourArea(contornos[key])
                     proporcion = area_hijo / area_padre
+
                     if proporcion < 0.8:
+                        #Si el hijo no abarca más del 80% que el padre
+                        # es la letra A
                         respuestas.append('A')
+
                     else:
+                        #De no ser así, es la letra D
                         respuestas.append('D')
+
     return respuestas
                 
-def corregir_examen(respuesta, i, respuestas_correctas):
-    if len(respuesta) == 0:
+def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> str:
+    ###
+    # respuesta: letras encontradas en la pregunta.
+    # i : número de pregunta.
+    # respuestas_correctas: lista con las respuestas correctas
+    # del examen.
+    ###
+
+    if len(respuesta) == 0:    #Si no hay ninguna letra
         return 'No hay respuesta'
-    elif len(respuesta) > 1:
+
+    elif len(respuesta) > 1: # si hay más de una letra
         return 'Contesto mas de una letra'
-    else:
-        if respuesta[0] == respuestas_correctas[i]:
-            return 'Bien'
-        else:
+    
+    else: #Si hay una letra
+
+        if respuesta[0] == respuestas_correctas[i]:  #Si la letra es correcta
+
+            return 'OK'
+
+        else:               #Si la letra es incorrecta
             return 'Mal'
 
-respuestas_corrctas = ['B', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D']
+respuestas_correctas = ['B', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']
 
-for i in range(len(preguntas)):
-    pregunta = preguntas[i]
-    preg_bin = binarize(pregunta)
-    linea_preg = lineas_horizontales(preg_bin)
-    sub_preg = recortar_pregunta(pregunta,linea_preg)
-    dic_letras, cont = detectar_letra(sub_preg)
-    respuestas = clasificar_letra(dic_letras, cont)
-    print(respuestas)
-    corregir_examen(respuestas, i, respuestas_corrctas)
+def corregir_examen(examen: np.array)-> None:
+    ###
+    # examen : imagen escala de grises del examen
+    # completo
+    ###
+    nota = 0
+    for i in range(len(preguntas)):
+        pregunta = preguntas[i]
+        preg_bin = binarize(pregunta)                                       #Binarizo pregunta
+        linea_preg = lineas_horizontales(preg_bin)                          #Encuentro linea de respuesta.
+        sub_preg = recortar_pregunta(pregunta,linea_preg)                   #Recorto área de respuesta
+        dic_letras, cont = detectar_letra(sub_preg)                         #Encuento letra o vacío
+        respuestas = clasificar_letra(dic_letras, cont)                     #Identifico qué letra es
+        correccion = corregir_pregunta(respuestas, i, respuestas_correctas) #Corrección con respuestas correctas.
+        
+        #Devuelvo correción de la pregunta
+        if correccion == 'OK':
+            nota += 1
+            print(f'Pregunta {i+1}: {correccion}')
+        else:
+            print(f'Pregunta {i+1}: MAL')
+    
+    #Imprimo nota del examen
+    print(f'La nota es {nota}')
+    
 
+corregir_examen(examen)
 
