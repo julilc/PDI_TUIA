@@ -103,156 +103,6 @@ imshow(examen)
 
 
 ################################# Encabezado #########################################
-<<<<<<< HEAD
-=======
-
-def obtener_renglon_de_datos(examen):
-    """
-    Devuelve la imagen del renglón de los campos a analizar
-    """
-    img = cv2.imread(examen, cv2.IMREAD_GRAYSCALE)
-    umbral, umbralizada = cv2.threshold(img, 120, 255, cv2.THRESH_BINARY)
-    img_neg = umbralizada==0  #True -> blanco, False --> negro
-
-    img_row_zeros = img_neg.any(axis=1)
-    x = np.diff(img_row_zeros)
-    renglones_indxs = np.argwhere(x)  # me devuelve donde empieza y termina el renglon, me interesa la pos 2 y 3
-    renglon_de_datos = [renglones_indxs[2], renglones_indxs[3]]
-    # Genero imagen para pasar como argumento a la otra que analiza el texto
-    recorte_renglon = img[renglon_de_datos[0][0]:renglon_de_datos[1][0], :]
-    return recorte_renglon
-
-def obtener_datos_de_campos(imagen):
-    """ 
-    Funcion que devuelve una lista con las imagenes de los campos completados
-    """
-    campos = imagen
-    
-    _, umbral = cv2.threshold(campos, 220, 255, cv2.THRESH_BINARY)
-    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    campos = []
-
-    for c in contornos:
-        x, y, w, h = cv2.boundingRect(c) 
-        
-        if w > 77:
-          # chequeo que la posiscion de x no sea 569 porque coincide con el ancho del campo de codigo
-          if x == 569:
-            continue
-
-          campos.append((x, y, w, h))
-
-    # Genero imagenes para pasar como argumento a la otra que analiza los caracteres:
-    indv_datos_del_examen=[]
-    campos_a_retornar=imagen.copy()
-    for x, y, w, h in campos:
-      indv_datos_del_examen.append(campos_a_retornar[y+3:y+h-3, x+3:x+w-3]) # Agrego los recortes de los campos, el +3, -3 para descartar los borde
-    
-    return indv_datos_del_examen
-
-def contar_componentes(campos):
-    """
-    Función que cuenta los caracteres de mi imagen
-    """
-    componentes={}
-    con = 0
-    
-    for imagen in campos:
-      ret, thresh = cv2.threshold(imagen, 127, 255, 0)
-
-      #cv2 Componets detecta los blancos como porciones de componentes --> hay que invertir los bits 
-      img = cv2.bitwise_not(thresh)     
-      output = cv2.connectedComponentsWithStats(img)
-      caracteres = output[0]-1
-        
-      stats = output[2]
-      sort_index = np.argsort(stats[:, 0])
-      stats = stats[sort_index]
-      
-      # Descartar las componentes de ancho pequeño
-      for i in range(len(stats)):
-        if i >= 1:
-          anchura = stats[i][2]
-          if anchura <= 2:
-             caracteres = caracteres -1
-
-      espacios =  []
-      for i in range(len(stats)):
-        if i > 1: # para calcular la diferencia con el anterior
-          val_espacio = stats[i][0]-(stats[i-1][0]) # calculo la diferencia entre la cordenada x de mi componente siguiente y la anterior
-          if val_espacio > 9 and  i > 2: # > 2 Es para descartar el vector de mi primer componente. Porque las masyusculas tienden a ser mas anchas y no corresponden a espacios
-            espacios.append(val_espacio)  
-       
-      clave = f"campo_{con}"
-      componentes[clave] = (caracteres, len(espacios))
-      con = con + 1
-
-    return componentes
-
-def validar_caracteres(componentes):
-
-  for val, keys in componentes.items():
-    n_caracteres = keys[0]
-    espacios = keys[1]
-
-    if val == "campo_1":
-       if n_caracteres == 1:
-          print("CODE:OK")
-       else:
-          print("CODE: MAL")  
-       
-    if val == "campo_2" or val == "campo_0": 
-       if n_caracteres == 8:
-          if val == "campo_0": 
-            print("DATE:OK")
-          else:
-            print("ID:OK")
-       else:
-          if val == "campo_0": 
-            print("DATE:MAL")
-          else: 
-            print("ID: MAL")  
-
-    if val == "campo_3":
-       if n_caracteres > 1 and  n_caracteres <= 25 and espacios == 1:
-          print("NAME:OK")
-       else:
-          print("NAME: MAL")       
-   
-def obtener_campo_nombre(examen):
-    '''Función que evuelve los crop de los campos name'''
-    renglon = obtener_renglon_de_datos(examen)
-    # Como sé que el ultimo campo es el nombre, me quedo con ese
-    campos_datos = obtener_datos_de_campos(renglon)
-    name = campos_datos[3]
-    #plt.figure(), plt.imshow(renglon, cmap='gray'),  plt.show(block=True)
-    return name
-
-################################# Recorte de respuestas ##############################
-
-
-
-############### Detección de Respuestas y corrección de preguntas ####################
-#Recorto manual respuestas para hacer este punto
-x1 = [20,20,20,20,20,324,324,324,324,324 ]
-x2 = [258,258,258,258,258, 562,562,562,562,562]
-y1 = [56,182,312,435, 561,56,182,312,435, 561 ]
-y2 = [172,298, 421 ,555,675, 172,298, 421 , 555,675 ]
-
-def recortar_preguntas():
-    preguntas = []
-    for i in range(len(x1)):
-        pregunta = examen[y1[i]:y2[i], x1[i]:x2[i]]
-        preguntas.append(pregunta)
-    return preguntas
-
-preguntas = recortar_preguntas()
-
-# for pregunta in preguntas:
-    #imshow(pregunta)
-
->>>>>>> ff42fc6b65d93f571fc51f5dcaff34a33271241d
 def binarize(img: np.array) -> np.array:
     ###
     #img: imagen en escala de grises
@@ -305,13 +155,13 @@ def obtener_campos(examen, min_ancho=1):
 
     linea_nombre = lineas_ordenadas[0]
     x,y,w,h = linea_nombre
-    nombre = encabezado[y-20:y+h,x:x+w]
+    nombre = encabezado[y-20:y+h-2,x:x+w]
     linea_fecha = lineas_ordenadas[1]
     x,y,w,h = linea_fecha
-    fecha = encabezado[y-20:y+h,x:x+w]
+    fecha = encabezado[y-20:y+h-2,x:x+w]
     linea_clase = lineas_ordenadas[2]
     x,y,w,h = linea_clase
-    clase = encabezado[y-20:y+h,x:x+w]
+    clase = encabezado[y-20:y+h-2,x:x+w]
 
     imshow(nombre)
     imshow(fecha)
@@ -321,39 +171,42 @@ def obtener_campos(examen, min_ancho=1):
 
 
 
-for i in range(len(paths_img)):
-    examen = cv2.imread(paths_img[i], cv2.IMREAD_GRAYSCALE)
-    obtener_campos(examen,70 )
+examen = cv2.imread(paths_img[0], cv2.IMREAD_GRAYSCALE)
+nombre, fecha, clase = obtener_campos(examen,70 )    
+
+def obtener_datos_de_campos(campo: np.array, tipo: str):
+    ###
+    #Corrige los campos segun el tipo de campo
+    #campo: imagen del campo.
+    #tipo: tipo de campo del que se trata (nombre, fecha, clase)
+    ###
+    if tipo == 'nombre':
+        ### Encontrar si hay 2 palabras
+        if palabras == 2:
+            ### Contar cantidad de letras
+            if letras =< 25:
+                return f'Nombre: OK'
+            else:
+                return f'Nombre : Mal'
+        else:
+            return f'Nombre: Mal'
     
-
-def obtener_datos_de_campos(imagen):
-    """ 
-    Funcion que devuelve una lista con las imagenes de los campos completados
-    """
-    campos = imagen
+    elif tipo == 'fecha':
+        ### Contar si la cantidad de caracteres son 8
+        if caracteres == 8:
+            return f'Fecha: OK'
+        else:
+            return f'Fecha : Mal'
     
-    _, umbral = cv2.threshold(campos, 220, 255, cv2.THRESH_BINARY)
-    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    campos = []
-
-    for c in contornos:
-        x, y, w, h = cv2.boundingRect(c) 
+    elif tipo == 'clase':
+        ### Contar si tieen 1 solo caracter
+        if caracter == 1:
+            return f'Clase : OK'
+        else:
+            return f'Clase : Mal'
         
-        if w > 77:
-          # chequeo que la posiscion de x no sea 569 porque coincide con el ancho del campo de codigo
-          if x == 569:
-            continue
+obtener_datos_de_campos(nombre, 'a')
 
-          campos.append((x, y, w, h))
-
-    # Genero imagenes para pasar como argumento a la otra que analiza los caracteres:
-    indv_datos_del_examen=[]
-    campos_a_retornar=imagen.copy()
-    for x, y, w, h in campos:
-      indv_datos_del_examen.append(campos_a_retornar[y+3:y+h-3, x+3:x+w-3]) # Agrego los recortes de los campos, el +3, -3 para descartar los borde
-    
-    return indv_datos_del_examen
 
 def contar_componentes(campos):
     """
