@@ -4,8 +4,8 @@
 
 ### Integrantes ###
 # López Ceratto, Julieta : L-3311/1
-# 
-#
+# Dimenna, Valentin      : D-43366/4  
+# Onega, Miranda PIlar   : O-1779/5
 ###
 
 #Librerías
@@ -99,36 +99,10 @@ paths_img = ['examen_1.png', 'examen_2.png', 'examen_3.png', 'examen_4.png', 'ex
 paths_img = ['./src/'+i for i in paths_img]
 paths_img[0]
 examen = cv2.imread(paths_img[1], cv2.IMREAD_GRAYSCALE)
-#imshow(examen)
+imshow(examen)
 
 
 ################################# Encabezado #########################################
-
-
-
-################################# Recorte de respuestas ##############################
-
-
-
-############### Detección de Respuestas y corrección de preguntas ####################
-#Recorto manual respuestas para hacer este punto
-x1 = [20,20,20,20,20,324,324,324,324,324 ]
-x2 = [258,258,258,258,258, 562,562,562,562,562]
-y1 = [56,182,312,435, 561,56,182,312,435, 561 ]
-y2 = [172,298, 421 ,555,675, 172,298, 421 , 555,675 ]
-
-def recortar_preguntas():
-    preguntas = []
-    for i in range(len(x1)):
-        pregunta = examen[y1[i]:y2[i], x1[i]:x2[i]]
-        preguntas.append(pregunta)
-    return preguntas
-
-preguntas = recortar_preguntas()
-
-# for pregunta in preguntas:
-    #imshow(pregunta)
-
 def binarize(img: np.array) -> np.array:
     ###
     #img: imagen en escala de grises
@@ -136,6 +110,257 @@ def binarize(img: np.array) -> np.array:
     ###
     _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
     return img_bin
+
+
+def obtener_campos(examen, min_ancho=1):
+    ###
+    #Devuelve 3 imágenes de los campos a analizar
+    #examen : imagen en escala de grises del examen.
+    #nombre: imagen con el nombre.
+    #fecha: imagen con la fecha.
+    #clase : imagen con la clase.
+    ###
+
+    # Binarizo el examen
+    w, h = examen.shape
+    encabezado = examen[0:46, 0:w]
+    
+    # Binarización
+    encabezado_bin = binarize(encabezado)
+
+    # Convertir la imagen a color para visualizar contornos
+    encabezado_sub = cv2.cvtColor(encabezado_bin.copy(), cv2.COLOR_GRAY2BGR)
+
+    # Encontrar contornos en la imagen binaria
+    contours, _ = cv2.findContours(encabezado_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    lineas_campos = []
+
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+
+        # Solo agregar si el ancho es mayor al umbral `min_ancho`
+        if w > min_ancho:
+            lineas_campos.append((x, y, w, h))
+            # Dibujar rectángulo alrededor del contorno
+            cv2.rectangle(encabezado_sub, (x, y), (x + w, y + h), (255, 0, 0), 1)
+
+    # Dibujar todos los contornos
+    cv2.drawContours(encabezado_sub, contours, -1, (0, 255, 0), 1)
+
+    # Mostrar la imagen con contornos y rectángulos
+    imshow(encabezado_sub)
+    lineas_ordenadas = sorted(lineas_campos, key=lambda campo: campo[0])
+    print(lineas_campos)
+
+    linea_nombre = lineas_ordenadas[0]
+    x,y,w,h = linea_nombre
+    nombre = encabezado[y-20:y+h,x:x+w]
+    linea_fecha = lineas_ordenadas[1]
+    x,y,w,h = linea_fecha
+    fecha = encabezado[y-20:y+h,x:x+w]
+    linea_clase = lineas_ordenadas[2]
+    x,y,w,h = linea_clase
+    clase = encabezado[y-20:y+h,x:x+w]
+
+    imshow(nombre)
+    imshow(fecha)
+    imshow(clase)
+
+    return nombre, fecha, clase
+
+
+
+for i in range(len(paths_img)):
+    examen = cv2.imread(paths_img[i], cv2.IMREAD_GRAYSCALE)
+    obtener_campos(examen,70 )
+    
+
+def obtener_datos_de_campos(imagen):
+    """ 
+    Funcion que devuelve una lista con las imagenes de los campos completados
+    """
+    campos = imagen
+    
+    _, umbral = cv2.threshold(campos, 220, 255, cv2.THRESH_BINARY)
+    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    campos = []
+
+    for c in contornos:
+        x, y, w, h = cv2.boundingRect(c) 
+        
+        if w > 77:
+          # chequeo que la posiscion de x no sea 569 porque coincide con el ancho del campo de codigo
+          if x == 569:
+            continue
+
+          campos.append((x, y, w, h))
+
+    # Genero imagenes para pasar como argumento a la otra que analiza los caracteres:
+    indv_datos_del_examen=[]
+    campos_a_retornar=imagen.copy()
+    for x, y, w, h in campos:
+      indv_datos_del_examen.append(campos_a_retornar[y+3:y+h-3, x+3:x+w-3]) # Agrego los recortes de los campos, el +3, -3 para descartar los borde
+    
+    return indv_datos_del_examen
+
+def contar_componentes(campos):
+    """
+    Función que cuenta los caracteres de mi imagen
+    """
+    componentes={}
+    con = 0
+    
+    for imagen in campos:
+      ret, thresh = cv2.threshold(imagen, 127, 255, 0)
+
+      #cv2 Componets detecta los blancos como porciones de componentes --> hay que invertir los bits 
+      img = cv2.bitwise_not(thresh)     
+      output = cv2.connectedComponentsWithStats(img)
+      caracteres = output[0]-1
+        
+      stats = output[2]
+      sort_index = np.argsort(stats[:, 0])
+      stats = stats[sort_index]
+      
+      # Descartar las componentes de ancho pequeño
+      for i in range(len(stats)):
+        if i >= 1:
+          anchura = stats[i][2]
+          if anchura <= 2:
+             caracteres = caracteres -1
+
+      espacios =  []
+      for i in range(len(stats)):
+        if i > 1: # para calcular la diferencia con el anterior
+          val_espacio = stats[i][0]-(stats[i-1][0]) # calculo la diferencia entre la cordenada x de mi componente siguiente y la anterior
+          if val_espacio > 9 and  i > 2: # > 2 Es para descartar el vector de mi primer componente. Porque las masyusculas tienden a ser mas anchas y no corresponden a espacios
+            espacios.append(val_espacio)  
+       
+      clave = f"campo_{con}"
+      componentes[clave] = (caracteres, len(espacios))
+      con = con + 1
+
+    return componentes
+
+def validar_caracteres(componentes):
+
+  for val, keys in componentes.items():
+    n_caracteres = keys[0]
+    espacios = keys[1]
+
+    if val == "campo_1":
+       if n_caracteres == 1:
+          print("CODE:OK")
+       else:
+          print("CODE: MAL")  
+       
+    if val == "campo_2" or val == "campo_0": 
+       if n_caracteres == 8:
+          if val == "campo_0": 
+            print("DATE:OK")
+          else:
+            print("ID:OK")
+       else:
+          if val == "campo_0": 
+            print("DATE:MAL")
+          else: 
+            print("ID: MAL")  
+
+    if val == "campo_3":
+       if n_caracteres > 1 and  n_caracteres <= 25 and espacios == 1:
+          print("NAME:OK")
+       else:
+          print("NAME: MAL")       
+   
+def obtener_campo_nombre(examen):
+    '''Función que evuelve los crop de los campos name'''
+    renglon = obtener_renglon_de_datos(examen)
+    # Como sé que el ultimo campo es el nombre, me quedo con ese
+    campos_datos = obtener_datos_de_campos(renglon)
+    name = campos_datos[3]
+    #plt.figure(), plt.imshow(renglon, cmap='gray'),  plt.show(block=True)
+    return name
+
+################################# Recorte de respuestas ##############################
+
+def recortar_preguntas(path: str) -> list:
+    img = cv2.imread(path,cv2.IMREAD_GRAYSCALE) 
+    cv2.imshow('GrayScale Image', img)
+
+    _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
+    cv2.imshow('Thresholded Image', img_bin)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+    sub_imagenes=[]
+    for i, contour in enumerate(contours):
+        x, y, w, h = cv2.boundingRect(contour)
+        if w > 50 and h > 50: 
+            sub_image = img[y:y+h, x:x+w]
+            
+            # Guardar en archivo las subimagenes
+            # cv2.imwrite(f'question_{i+1}.png', sub_image)
+            sub_imagenes.append(sub_image)
+            cv2.imshow(f'Question {i+1}', sub_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+    question_images = []
+    sub_imagenes = sub_imagenes[::-1]
+    print(sub_imagenes)
+    for i in range(len(sub_imagenes)):
+        subimage = sub_imagenes[i]
+
+        _, binary = cv2.threshold(subimage, 150, 255, cv2.THRESH_BINARY_INV)
+
+        horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (75, 1))
+
+
+        horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+
+
+        contours, _ = cv2.findContours(horizontal_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+
+        # Muestra las Lineas horizontales detectadas
+        # subimage_with_lines = cv2.cvtColor(subimage, cv2.COLOR_GRAY2BGR)
+        # for contour in contours:
+        #     x, y, w, h = cv2.boundingRect(contour)
+        #     cv2.rectangle(subimage_with_lines, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        # cv2.imshow('Detected Horizontal Lines', subimage_with_lines)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        prev_y = 0
+        
+
+        for i, contour in enumerate(contours):
+            x, y, w, h = cv2.boundingRect(contour)
+            if i > 0:
+                question_img = subimage[prev_y:y, :]
+                # question_images.append(question_img)
+                
+                # Guardar las subimagenes en archivos 
+                # cv2.imwrite(f'question_{i}.png', question_img)
+                question_images.append(question_img)
+                cv2.imshow(f'Question {i}', question_img)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+            
+            prev_y = y
+    return question_images
+
+
+############### Detección de Respuestas y corrección de preguntas ####################
+#Recorto manual respuestas para hacer este punto
+
+
+# for pregunta in preguntas:
+    #imshow(pregunta)
 
 def lineas_horizontales(img_bin: np.array ) -> tuple:
     ###
@@ -248,12 +473,12 @@ def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
         cv2.drawContours(img_contornos, contornos, i, color, 2)  # Dibujar contornos con el color apropiado
 
     # Mostrar la imagen con contornos dibujados
-    # print(f' padres: {padres}, hijos : {hijos}')
+    #print(f' padres: {padres}, hijos : {hijos}')
     #plt.figure(figsize=(10, 6))
-    # plt.imsow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
+    #plt.imshow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
     #plt.title("Contornos de Letras Detectados")
-    # plt.axis('off')
-    # plt.show()
+    #plt.axis('off')
+    #plt.show()
 
     return dict_contornos, contornos
 
@@ -324,9 +549,8 @@ def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> st
         else:               #Si la letra es incorrecta
             return 'Mal'
 
-respuestas_correctas = ['B', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']
 
-def corregir_examen(examen: np.array)-> None:
+def corregir_examen(preguntas: list)-> None:
     ###
     # examen : imagen escala de grises del examen
     # completo
@@ -340,7 +564,6 @@ def corregir_examen(examen: np.array)-> None:
         dic_letras, cont = detectar_letra(sub_preg)                         #Encuento letra o vacío
         respuestas = clasificar_letra(dic_letras, cont)                     #Identifico qué letra es
         correccion = corregir_pregunta(respuestas, i, respuestas_correctas) #Corrección con respuestas correctas.
-        
         #Devuelvo correción de la pregunta
         if correccion == 'OK':
             nota += 1
@@ -350,7 +573,8 @@ def corregir_examen(examen: np.array)-> None:
     
     #Imprimo nota del examen
     print(f'La nota es {nota}')
-    
 
-corregir_examen(examen)
+respuestas_correctas = ['C', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']   
+preguntas = recortar_preguntas(paths_img[4])
+corregir_examen(preguntas)
 
