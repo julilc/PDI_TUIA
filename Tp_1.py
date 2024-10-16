@@ -4,7 +4,7 @@
 
 ### Integrantes ###
 # López Ceratto, Julieta : L-3311/1
-# 
+# Dimenna, Valentin      : D-43366/4  
 #
 ###
 
@@ -354,3 +354,68 @@ def corregir_examen(examen: np.array)-> None:
 
 corregir_examen(examen)
 
+
+
+img = cv2.imread('TP/examen_1.png',cv2.IMREAD_GRAYSCALE) 
+cv2.imshow('GrayScale Image', img)
+
+_, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
+cv2.imshow('Thresholded Image', img_bin)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+sub_imagenes=[]
+for i, contour in enumerate(contours):
+    x, y, w, h = cv2.boundingRect(contour)
+    if w > 50 and h > 50: 
+        sub_image = img[y:y+h, x:x+w]
+        
+        # Guardar en archivo las subimagenes
+        # cv2.imwrite(f'question_{i+1}.png', sub_image)
+        sub_imagenes.append(sub_image)
+        cv2.imshow(f'Question {i+1}', sub_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+subimage = sub_imagenes[1]
+
+_, binary = cv2.threshold(subimage, 150, 255, cv2.THRESH_BINARY_INV)
+
+horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (75, 1))
+
+
+horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+
+
+contours, _ = cv2.findContours(horizontal_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+
+# Muestra las Lineas horizontales detectadas
+# subimage_with_lines = cv2.cvtColor(subimage, cv2.COLOR_GRAY2BGR)
+# for contour in contours:
+#     x, y, w, h = cv2.boundingRect(contour)
+#     cv2.rectangle(subimage_with_lines, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+# cv2.imshow('Detected Horizontal Lines', subimage_with_lines)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+
+prev_y = 0
+question_images = []
+
+for i, contour in enumerate(contours):
+    x, y, w, h = cv2.boundingRect(contour)
+    if i > 0:
+        question_img = subimage[prev_y:y, :]
+        # question_images.append(question_img)
+        
+        # Guardar las subimagenes en archivos 
+        # cv2.imwrite(f'question_{i}.png', question_img)
+        question_images.append(question_img)
+        cv2.imshow(f'Question {i}', question_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    prev_y = y
