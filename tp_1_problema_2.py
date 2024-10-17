@@ -7,92 +7,12 @@
 # Dimenna, Valentin      : D-43366/4  
 # Onega, Miranda PIlar   : O-1779/5
 ###
-
-#Librerías
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Defininimos función para mostrar imágenes
-def imshow(img, new_fig=True, title=None, color_img=False, blocking=False, colorbar=True, ticks=False):
-    if new_fig:
-        plt.figure()
-    if color_img:
-        plt.imshow(img)
-    else:
-        plt.imshow(img, cmap='gray')
-    #plt.title(title)
-    if not ticks:
-        plt.xticks([]), plt.yticks([])
-    if colorbar:
-        plt.colorbar()
-    if new_fig:        
-        plt.show(block=blocking)
-
-############ PROBLEMA 1: ECUALIZACIÓN DEL HISTOGRAMA #######
-
-# Carga de imagen
-img_path = './src/imagen_con_detalles_escondidos.tif'
-
-img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-
-img.shape
-
-def ecualizacion_hist(img, M, N):
-    h, w = img.shape
-
-    # Definir bordes
-    top = bottom = M // 2
-    left = right = N // 2
-
-    # Agregar bordes
-    img_border = cv2.copyMakeBorder(img, top=top, bottom=bottom, left=left, right=right, borderType=cv2.BORDER_REPLICATE)
-
-    # Crear imagen en blanco para almacenar resultados
-    img_result = img.copy()
-
-    # Iteración por cada píxel de la imagen original
-    for i in range(h):
-        for j in range(w):
-            # Definir los límites de la ventana
-            max_i = i + M
-            max_j = j + N
-
-            # Extraer la ventana
-            ventana = img_border[i:max_i-1, j:max_j-1]
-
-            # Calcular histograma
-            hist = cv2.calcHist([ventana], [0], None, [256], [0, 256])
-
-            # Calcular la distribución acumulada (CDF)
-            cdf = hist.cumsum()
-            cdf_norm = (cdf - cdf.min()) * 255 // (cdf.max() - cdf.min())
-            cdf_norm = cdf_norm.astype('uint8')  # Asegurarse de que sea tipo uint8
-
-            # Obtener el valor del pixel para la cdf normalizada
-            pix_norm = cdf_norm[img_border[i+top, j+right]]
-            img_result[i, j] = pix_norm
-        #img_result = cv2.medianBlur(img_result)
-
-    return img_result
-    
-img_ec = ecualizacion_hist(img, M = 50, N = 50)
-img_ec.shape
-plt.figure(), plt.imshow(img, cmap = 'gray'), plt.show(block = True)
-
-plt.figure(), plt.imshow(img_ec, cmap = 'gray'), plt.show(block = True)
-
-# Con M y N = 3 se presenta mucho ruido
-# Con M y N = 10 se presenta menos ruido
-# No hay mejora en aspecto de ruido a valores mas grandes
-# No se presentan cambios muy distintos en cuanto a la
-# Visualizacion de los valores dentrode los cuadrados
-
-
-
 ############################################################################################
 ######################### PROBLEMA 2: CORRECCIÓN DE MULTIPLE CHOICE ########################
 ############################################################################################
+
+#Importar .rqst
+from rqst import *
 
 #Carga de paths
 paths_img = ['examen_1.png', 'examen_2.png', 'examen_3.png', 'examen_4.png', 'examen_5.png']
@@ -112,19 +32,20 @@ def binarize(img: np.array) -> np.array:
     return img_bin
 
 
-def obtener_campos(examen, min_ancho=1):
-    ###
-    #Devuelve 3 imágenes de los campos a analizar
-    #examen : imagen en escala de grises del examen.
-    #nombre: imagen con el nombre.
-    #fecha: imagen con la fecha.
-    #clase : imagen con la clase.
-    ###
+def obtener_campos(examen: np.array):
+    '''
+    Devuelve 3 imágenes de los campos a analizar.
+    examen : imagen en escala de grises del examen;
+    nombre: imagen con el nombre;
+    fecha: imagen con la fecha;
+    clase : imagen con la clase;
+    '''
+    min_ancho = 70
 
     # Binarizo el examen
     w, h = examen.shape
     encabezado = examen[0:46, 0:w]
-    
+    #imshow(encabezado)
     # Binarización
     encabezado_bin = binarize(encabezado)
 
@@ -149,9 +70,9 @@ def obtener_campos(examen, min_ancho=1):
     cv2.drawContours(encabezado_sub, contours, -1, (0, 255, 0), 1)
 
     # Mostrar la imagen con contornos y rectángulos
-    imshow(encabezado_sub)
+    # imshow(encabezado_sub)
     lineas_ordenadas = sorted(lineas_campos, key=lambda campo: campo[0])
-    print(lineas_campos)
+    # print(lineas_campos)
 
     linea_nombre = lineas_ordenadas[0]
     x,y,w,h = linea_nombre
@@ -163,139 +84,138 @@ def obtener_campos(examen, min_ancho=1):
     x,y,w,h = linea_clase
     clase = encabezado[y-20:y+h-2,x:x+w]
 
-    imshow(nombre)
-    imshow(fecha)
-    imshow(clase)
+    # imshow(nombre)
+    # imshow(fecha)
+    # imshow(clase)
 
     return nombre, fecha, clase
 
 
-
-examen = cv2.imread(paths_img[0], cv2.IMREAD_GRAYSCALE)
-nombre, fecha, clase = obtener_campos(examen,70 )    
-
-def obtener_datos_de_campos(campo: np.array, tipo: str):
-    ###
-    #Corrige los campos segun el tipo de campo
-    #campo: imagen del campo.
-    #tipo: tipo de campo del que se trata (nombre, fecha, clase)
-    ###
-    if tipo == 'nombre':
-        ### Encontrar si hay 2 palabras
-        if palabras == 2:
-            ### Contar cantidad de letras
-            if letras =< 25:
-                return f'Nombre: OK'
-            else:
-                return f'Nombre : Mal'
-        else:
-            return f'Nombre: Mal'
+# def obtener_datos_de_campos(campo: np.array, tipo: str):
+#     ###
+#     #Corrige los campos segun el tipo de campo
+#     #campo: imagen del campo.
+#     #tipo: tipo de campo del que se trata (nombre, fecha, clase)
+#     ###
+#     if tipo == 'nombre':
+#         ### Encontrar si hay 2 palabras
+#         if palabras == 2:
+#             ### Contar cantidad de letras
+#             if letras =< 25:
+#                 return f'Nombre: OK'
+#             else:
+#                 return f'Nombre : Mal'
+#         else:
+#             return f'Nombre: Mal'
     
-    elif tipo == 'fecha':
-        ### Contar si la cantidad de caracteres son 8
-        if caracteres == 8:
-            return f'Fecha: OK'
-        else:
-            return f'Fecha : Mal'
+#     elif tipo == 'fecha':
+#         ### Contar si la cantidad de caracteres son 8
+#         if caracteres == 8:
+#             return f'Fecha: OK'
+#         else:
+#             return f'Fecha : Mal'
     
-    elif tipo == 'clase':
-        ### Contar si tieen 1 solo caracter
-        if caracter == 1:
-            return f'Clase : OK'
-        else:
-            return f'Clase : Mal'
+#     elif tipo == 'clase':
+#         ### Contar si tieen 1 solo caracter
+#         if caracter == 1:
+#             return f'Clase : OK'
+#         else:
+#             return f'Clase : Mal'
         
-obtener_datos_de_campos(nombre, 'a')
+# obtener_datos_de_campos(nombre, 'a')
 
 
-def contar_componentes(campos):
-    """
-    Función que cuenta los caracteres de mi imagen
-    """
-    componentes={}
-    con = 0
+# def contar_componentes(campos):
+#     """
+#     Función que cuenta los caracteres de mi imagen
+#     """
+#     componentes={}
+#     con = 0
     
-    for imagen in campos:
-      ret, thresh = cv2.threshold(imagen, 127, 255, 0)
+#     for imagen in campos:
+#       ret, thresh = cv2.threshold(imagen, 127, 255, 0)
 
-      #cv2 Componets detecta los blancos como porciones de componentes --> hay que invertir los bits 
-      img = cv2.bitwise_not(thresh)     
-      output = cv2.connectedComponentsWithStats(img)
-      caracteres = output[0]-1
+#       #cv2 Componets detecta los blancos como porciones de componentes --> hay que invertir los bits 
+#       img = cv2.bitwise_not(thresh)     
+#       output = cv2.connectedComponentsWithStats(img)
+#       caracteres = output[0]-1
         
-      stats = output[2]
-      sort_index = np.argsort(stats[:, 0])
-      stats = stats[sort_index]
+#       stats = output[2]
+#       sort_index = np.argsort(stats[:, 0])
+#       stats = stats[sort_index]
       
-      # Descartar las componentes de ancho pequeño
-      for i in range(len(stats)):
-        if i >= 1:
-          anchura = stats[i][2]
-          if anchura <= 2:
-             caracteres = caracteres -1
+#       # Descartar las componentes de ancho pequeño
+#       for i in range(len(stats)):
+#         if i >= 1:
+#           anchura = stats[i][2]
+#           if anchura <= 2:
+#              caracteres = caracteres -1
 
-      espacios =  []
-      for i in range(len(stats)):
-        if i > 1: # para calcular la diferencia con el anterior
-          val_espacio = stats[i][0]-(stats[i-1][0]) # calculo la diferencia entre la cordenada x de mi componente siguiente y la anterior
-          if val_espacio > 9 and  i > 2: # > 2 Es para descartar el vector de mi primer componente. Porque las masyusculas tienden a ser mas anchas y no corresponden a espacios
-            espacios.append(val_espacio)  
+#       espacios =  []
+#       for i in range(len(stats)):
+#         if i > 1: # para calcular la diferencia con el anterior
+#           val_espacio = stats[i][0]-(stats[i-1][0]) # calculo la diferencia entre la cordenada x de mi componente siguiente y la anterior
+#           if val_espacio > 9 and  i > 2: # > 2 Es para descartar el vector de mi primer componente. Porque las masyusculas tienden a ser mas anchas y no corresponden a espacios
+#             espacios.append(val_espacio)  
        
-      clave = f"campo_{con}"
-      componentes[clave] = (caracteres, len(espacios))
-      con = con + 1
+#       clave = f"campo_{con}"
+#       componentes[clave] = (caracteres, len(espacios))
+#       con = con + 1
 
-    return componentes
+#     return componentes
 
-def validar_caracteres(componentes):
+# def validar_caracteres(componentes):
 
-  for val, keys in componentes.items():
-    n_caracteres = keys[0]
-    espacios = keys[1]
+#   for val, keys in componentes.items():
+#     n_caracteres = keys[0]
+#     espacios = keys[1]
 
-    if val == "campo_1":
-       if n_caracteres == 1:
-          print("CODE:OK")
-       else:
-          print("CODE: MAL")  
+#     if val == "campo_1":
+#        if n_caracteres == 1:
+#           print("CODE:OK")
+#        else:
+#           print("CODE: MAL")  
        
-    if val == "campo_2" or val == "campo_0": 
-       if n_caracteres == 8:
-          if val == "campo_0": 
-            print("DATE:OK")
-          else:
-            print("ID:OK")
-       else:
-          if val == "campo_0": 
-            print("DATE:MAL")
-          else: 
-            print("ID: MAL")  
+#     if val == "campo_2" or val == "campo_0": 
+#        if n_caracteres == 8:
+#           if val == "campo_0": 
+#             print("DATE:OK")
+#           else:
+#             print("ID:OK")
+#        else:
+#           if val == "campo_0": 
+#             print("DATE:MAL")
+#           else: 
+#             print("ID: MAL")  
 
-    if val == "campo_3":
-       if n_caracteres > 1 and  n_caracteres <= 25 and espacios == 1:
-          print("NAME:OK")
-       else:
-          print("NAME: MAL")       
+#     if val == "campo_3":
+#        if n_caracteres > 1 and  n_caracteres <= 25 and espacios == 1:
+#           print("NAME:OK")
+#        else:
+#           print("NAME: MAL")       
    
-def obtener_campo_nombre(examen):
-    '''Función que evuelve los crop de los campos name'''
-    renglon = obtener_renglon_de_datos(examen)
-    # Como sé que el ultimo campo es el nombre, me quedo con ese
-    campos_datos = obtener_datos_de_campos(renglon)
-    name = campos_datos[3]
-    #plt.figure(), plt.imshow(renglon, cmap='gray'),  plt.show(block=True)
-    return name
+# def obtener_campo_nombre(examen):
+#     '''Función que evuelve los crop de los campos name'''
+#     renglon = obtener_renglon_de_datos(examen)
+#     # Como sé que el ultimo campo es el nombre, me quedo con ese
+#     campos_datos = obtener_datos_de_campos(renglon)
+#     name = campos_datos[3]
+#     #plt.figure(), plt.imshow(renglon, cmap='gray'),  plt.show(block=True)
+#     return name
 
 ################################# Recorte de respuestas ##############################
 
-def recortar_preguntas(path: str) -> list:
-    img = cv2.imread(path,cv2.IMREAD_GRAYSCALE) 
-    cv2.imshow('GrayScale Image', img)
+def recortar_preguntas(img: np.array) -> list:
+    '''
+    Recorta pregunta dada una imagen del examen, devuelve una lista de imágenes de preguntas.
+    img: imagen del examen;
+    list: lista con una imagen por pregunta en el examen.
+    '''
 
     _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
-    cv2.imshow('Thresholded Image', img_bin)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.imshow('Thresholded Image', img_bin)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
     sub_imagenes=[]
@@ -307,9 +227,9 @@ def recortar_preguntas(path: str) -> list:
             # Guardar en archivo las subimagenes
             # cv2.imwrite(f'question_{i+1}.png', sub_image)
             sub_imagenes.append(sub_image)
-            cv2.imshow(f'Question {i+1}', sub_image)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            # cv2.imshow(f'Question {i+1}', sub_image)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
     question_images = []
     sub_imagenes = sub_imagenes[::-1]
     print(sub_imagenes)
@@ -350,27 +270,22 @@ def recortar_preguntas(path: str) -> list:
                 # Guardar las subimagenes en archivos 
                 # cv2.imwrite(f'question_{i}.png', question_img)
                 question_images.append(question_img)
-                cv2.imshow(f'Question {i}', question_img)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+                #cv2.imshow(f'Question {i}', question_img)
+                #cv2.waitKey(0)
+                #cv2.destroyAllWindows()
             
             prev_y = y
     return question_images
 
 
 ############### Detección de Respuestas y corrección de preguntas ####################
-#Recorto manual respuestas para hacer este punto
-
-
-# for pregunta in preguntas:
-    #imshow(pregunta)
 
 def lineas_horizontales(img_bin: np.array ) -> tuple:
-    ###
-    # img_bin : imagen binarizada.
-    # rect_mas_ancho : linea de respuesta del examen.
-    ###
-
+    '''
+    img_bin : imagen binarizada;
+    rect_mas_ancho : linea de respuesta del examen.
+    '''
+    #imshow(img_bin)
     # Convertir la imagen en color
     img_s = cv2.cvtColor(img_bin.copy(), cv2.COLOR_GRAY2BGR)
 
@@ -404,20 +319,20 @@ def lineas_horizontales(img_bin: np.array ) -> tuple:
     cv2.drawContours(img_s, contours, -1, (0, 255, 0), 1)  # Contornos en verde
 
     # Mostrar la imagen con contornos y el rectángulo más ancho
-    #plt.figure(figsize=(10, 6))
-    #plt.imshow(cv2.cvtColor(img_s, cv2.COLOR_BGR2RGB))
-    #plt.title("Contornos Encontrados y Rectángulo Más Ancho")
+    # plt.figure(figsize=(10, 6))
+    # plt.imshow(cv2.cvtColor(img_s, cv2.COLOR_BGR2RGB))
+    # plt.title("Contornos Encontrados y Rectángulo Más Ancho")
     # plt.axis('off')  # Opcional: Oculta los ejes
     # plt.show()
 
     return rect_mas_ancho
 
 def recortar_pregunta(pregunta: np.array, linea_preg: tuple) -> np.array:
-    ###
-    # pregunta: imagen escala de grises de pregunta del examen.
-    # linea_preg : linea horizontal de la pregunta del exament.
-    # sub_preguna: área de respuesta de la pregunta.
-    ###
+    '''
+    pregunta: imagen escala de grises de pregunta del examen;
+    linea_preg : linea horizontal de la pregunta del examen;
+    sub_preguna: área de respuesta de la pregunta;
+    '''
 
     #obtengo coordenadas de la linea
     x1,y1,w,h = linea_preg
@@ -428,17 +343,17 @@ def recortar_pregunta(pregunta: np.array, linea_preg: tuple) -> np.array:
     #recorto la imagen obteniendo solo el área de respuesta
     sub_preg = pregunta[y1-14:y1-2, x1: w]
 
-    #imshow(sub_preg)
+    # imshow(sub_preg)
     return sub_preg
 
 
 def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
-    ###
-    # sub_pregunta : área de respuesta de la pregunta.
-    #dict_contornos: diccionario clave contorno padre, valor
-    # contornos hijos.
-    # contornos: total de contornos encontrados.
-    ###
+    '''
+    sub_pregunta : área de respuesta de la pregunta;
+    dict_contornos: diccionario clave contorno padre, valor
+    contornos hijos;
+    contornos: total de contornos encontrados.
+    '''
 
     # Binarizo la imagen
     sub_bin = binarize(sub_preg)
@@ -476,23 +391,23 @@ def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
         cv2.drawContours(img_contornos, contornos, i, color, 2)  # Dibujar contornos con el color apropiado
 
     # Mostrar la imagen con contornos dibujados
-    #print(f' padres: {padres}, hijos : {hijos}')
-    #plt.figure(figsize=(10, 6))
-    #plt.imshow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
-    #plt.title("Contornos de Letras Detectados")
-    #plt.axis('off')
-    #plt.show()
+    # print(f' padres: {padres}, hijos : {hijos}')
+    # plt.figure(figsize=(10, 6))
+    # plt.imshow(cv2.cvtColor(img_contornos, cv2.COLOR_BGR2RGB))
+    # plt.title("Contornos de Letras Detectados")
+    # plt.axis('off')
+    # plt.show()
 
     return dict_contornos, contornos
 
 def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
-    ###
-    #dict_contornos: diccionario clave contorno padre, valor
-    # contornos hijos.
-    # contornos: total de contornos encontrados.
-    # respuestas: letras encontradas; si no encuentra letras devuelve
-    # lista vacía.
-    ###
+    '''
+    dict_contornos: diccionario clave contorno padre, valor
+    contornos hijos;
+    contornos: total de contornos encontrados;
+    respuestas: letras encontradas; si no encuentra letras devuelve
+    lista vacía.
+    '''
 
     respuestas = []
     if len(dict_contornos) == 0: ### si no se detecto una letra se devuelve la lista vacia
@@ -530,12 +445,12 @@ def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
     return respuestas
                 
 def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> str:
-    ###
-    # respuesta: letras encontradas en la pregunta.
-    # i : número de pregunta.
-    # respuestas_correctas: lista con las respuestas correctas
-    # del examen.
-    ###
+    '''
+    respuesta: letras encontradas en la pregunta;
+    i : número de pregunta;
+    respuestas_correctas: lista con las respuestas correcta
+    del examen;
+    '''
 
     if len(respuesta) == 0:    #Si no hay ninguna letra
         return 'No hay respuesta'
@@ -553,11 +468,12 @@ def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> st
             return 'Mal'
 
 
-def corregir_examen(preguntas: list)-> None:
-    ###
-    # examen : imagen escala de grises del examen
-    # completo
-    ###
+def corregir_examen(preguntas: list, respuestas_correctas : list)-> None:
+    '''
+    examen : imagen escala de grises del examen
+    completo;
+    respuestas_corresctas: lista de respuestas correctas
+    '''
     nota = 0
     for i in range(len(preguntas)):
         pregunta = preguntas[i]
@@ -576,73 +492,95 @@ def corregir_examen(preguntas: list)-> None:
     
     #Imprimo nota del examen
     print(f'La nota es {nota}')
+    return nota
 
-respuestas_correctas = ['C', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']   
-preguntas = recortar_preguntas(paths_img[4])
-corregir_examen(preguntas)
+#################################### Armar Imagen Resultados ##################################
 
-
-
-img = cv2.imread('TP/examen_1.png',cv2.IMREAD_GRAYSCALE) 
-cv2.imshow('GrayScale Image', img)
-
-_, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
-cv2.imshow('Thresholded Image', img_bin)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
-sub_imagenes=[]
-for i, contour in enumerate(contours):
-    x, y, w, h = cv2.boundingRect(contour)
-    if w > 50 and h > 50: 
-        sub_image = img[y:y+h, x:x+w]
-        
-        # Guardar en archivo las subimagenes
-        # cv2.imwrite(f'question_{i+1}.png', sub_image)
-        sub_imagenes.append(sub_image)
-        cv2.imshow(f'Question {i+1}', sub_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-subimage = sub_imagenes[1]
-
-_, binary = cv2.threshold(subimage, 150, 255, cv2.THRESH_BINARY_INV)
-
-horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (75, 1))
-
-
-horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-
-
-contours, _ = cv2.findContours(horizontal_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
-
-# Muestra las Lineas horizontales detectadas
-# subimage_with_lines = cv2.cvtColor(subimage, cv2.COLOR_GRAY2BGR)
-# for contour in contours:
-#     x, y, w, h = cv2.boundingRect(contour)
-#     cv2.rectangle(subimage_with_lines, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-# cv2.imshow('Detected Horizontal Lines', subimage_with_lines)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-prev_y = 0
-question_images = []
-
-for i, contour in enumerate(contours):
-    x, y, w, h = cv2.boundingRect(contour)
-    if i > 0:
-        question_img = subimage[prev_y:y, :]
-        # question_images.append(question_img)
-        
-        # Guardar las subimagenes en archivos 
-        # cv2.imwrite(f'question_{i}.png', question_img)
-        question_images.append(question_img)
-        cv2.imshow(f'Question {i}', question_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
+    '''
+    Esta función arma una imagen de círculo rojo o verde
+    con el mismo alto que la imagen del nombre del alumno
+    según la nota recibida
+    nombre_alumno : imagen nombre del alumno,
+    nota : nota obtenida en el examen
+    '''
+    h = nombre_alumno.shape[0]
+    w = 50
+    if nota<5:
+        color = (255,0,0)
     
-    prev_y = y
+    else:
+        color = (0,255,0)
+    # Crear una imagen en blanco (fondo blanco)
+    resultado = np.ones((h, w, 3), dtype=np.uint8) * 255  # Imagen blanca (RGB 255,255,255)
+
+    # Definir el centro y el radio del círculo
+    center = (w // 2, h // 2)  # Centro del círculo
+    radius = min(h, w) // 2 - 5  # Radio del círculo, con un pequeño margen
+
+    # Dibujar el círculo verde
+    color_circulo = color  # Color verde en formato BGR
+    cv2.circle(resultado, center, radius, color_circulo, -1)  # -1 para llenar el círculo
+
+    return resultado
+
+
+def resultados_examenes(list_path):
+    respuestas_correctas = ['C', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']
+    cross = cv2.imread('./src/cross.jpg', cv2.IMREAD_ANYCOLOR)
+    cross = cv2.cvtColor(cross, cv2.COLOR_BGR2RGB)
+    tick = cv2.imread('./src/tick.png', cv2.IMREAD_ANYCOLOR)
+    tick = cv2.cvtColor(tick, cv2.COLOR_BGR2RGB)
+    dict_nombre_resultado = {}
+    h_img_salida = 0
+    w_max_nombre = 0
+    
+    #Corregir examen de cada alumno
+    for i in range(len(list_path)):
+        
+        path_examen = list_path[i]
+        examen = cv2.imread(path_examen,cv2.IMREAD_GRAYSCALE) 
+        nombre_alumno, _, _ = obtener_campos(examen)
+        h, w = nombre_alumno.shape
+        if w > w_max_nombre:
+            w_max_nombre = w
+        h_img_salida += h+2
+        preguntas = recortar_preguntas(examen)
+        nota = corregir_examen(preguntas, respuestas_correctas)
+        resultado = img_resultado(nombre_alumno, nota)
+        nombre_alumno = cv2.cvtColor(nombre_alumno, cv2.COLOR_GRAY2BGR)
+
+        dict_nombre_resultado[i] = (nombre_alumno,resultado)
+        
+    img_salida = np.ones((h_img_salida, w_max_nombre + 53, 3), dtype=np.uint8) * 255  # Imagen blanca en escala de grises
+
+    
+    # Dibujar la línea vertical en la posición deseada
+    img_salida[0:h_img_salida, w_max_nombre + 2] = 0  # Línea vertical en negro
+    y_inicial = 0
+    l = 0
+    # Colocar nombres y resultados
+    for nombre_alumno, resultado in dict_nombre_resultado.values():
+        h_alumno, w_alumno, _ = nombre_alumno.shape
+        # Colocar la imagen del nombre
+        img_salida[y_inicial:y_inicial + h_alumno, 0:w_alumno] = nombre_alumno
+        # Colocar la imagen del resultado
+        img_salida[y_inicial:y_inicial + h_alumno, w_max_nombre + 3:w_max_nombre + 3 + resultado.shape[1]] = resultado
+        if l != len(dict_nombre_resultado)-1:
+            # Dibujar la línea horizontal
+            img_salida[y_inicial + h_alumno:y_inicial + h_alumno + 1, :] = 0
+            y_inicial += h_alumno + 2  # Ajustar la posición para el siguiente alumno
+        l += 1
+
+    img_salida = cv2.copyMakeBorder(img_salida,1,1,1,1, cv2.BORDER_CONSTANT)
+    # Mostrar la imagen resultante
+    plt.figure(figsize=(10, 6))
+    plt.imshow(img_salida, cmap='gray', vmin=0, vmax=255)  # Usar 'gray' para visualizar correctamente en escala de grises
+    plt.axis('off')  # Ocultar los ejes
+    plt.show()
+
+
+resultados_examenes(paths_img)
+
+
+
