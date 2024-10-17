@@ -56,7 +56,6 @@ def ecualizacion_hist(img, M, N):
             pix_norm = cdf_norm[img_border[i+top, j+right]]
             img_result[i, j] = pix_norm
         #img_result = cv2.medianBlur(img_result)
-    plt.figure(),plt.plot(cdf), plt.show()
     return img_result
     
 img_ec = ecualizacion_hist(img, M = 15, N = 35)
