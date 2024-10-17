@@ -506,7 +506,7 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
     '''
     h = nombre_alumno.shape[0]
     w = 50
-    if nota<5:
+    if nota < 6:
         color = (255,0,0)
     
     else:
@@ -527,10 +527,6 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
 
 def resultados_examenes(list_path):
     respuestas_correctas = ['C', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']
-    cross = cv2.imread('./src/cross.jpg', cv2.IMREAD_ANYCOLOR)
-    cross = cv2.cvtColor(cross, cv2.COLOR_BGR2RGB)
-    tick = cv2.imread('./src/tick.png', cv2.IMREAD_ANYCOLOR)
-    tick = cv2.cvtColor(tick, cv2.COLOR_BGR2RGB)
     dict_nombre_resultado = {}
     h_img_salida = 0
     w_max_nombre = 0
@@ -552,7 +548,7 @@ def resultados_examenes(list_path):
 
         dict_nombre_resultado[i] = (nombre_alumno,resultado)
         
-    img_salida = np.ones((h_img_salida, w_max_nombre + 53, 3), dtype=np.uint8) * 255  # Imagen blanca en escala de grises
+    img_salida = np.ones((h_img_salida, w_max_nombre + 53, 3), dtype=np.uint8) * 255  # Imagen blanca en RGB
 
     
     # Dibujar la línea vertical en la posición deseada
@@ -569,7 +565,7 @@ def resultados_examenes(list_path):
         if l != len(dict_nombre_resultado)-1:
             # Dibujar la línea horizontal
             img_salida[y_inicial + h_alumno:y_inicial + h_alumno + 1, :] = 0
-            y_inicial += h_alumno + 2  # Ajustar la posición para el siguiente alumno
+        y_inicial += h_alumno + 2  # Ajustar la posición para el siguiente alumno
         l += 1
 
     img_salida = cv2.copyMakeBorder(img_salida,1,1,1,1, cv2.BORDER_CONSTANT)
