@@ -438,9 +438,11 @@ def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
                         # es la letra A
                         respuestas.append('A')
 
+
                     else:
                         #De no ser así, es la letra D
                         respuestas.append('D')
+ 
 
     return respuestas
                 
@@ -451,7 +453,7 @@ def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> st
     respuestas_correctas: lista con las respuestas correcta
     del examen;
     '''
-
+    #print(i, respuesta)
     if len(respuesta) == 0:    #Si no hay ninguna letra
         return 'No hay respuesta'
 
@@ -491,7 +493,7 @@ def corregir_examen(preguntas: list, respuestas_correctas : list)-> None:
             print(f'Pregunta {i+1}: MAL')
     
     #Imprimo nota del examen
-    print(f'La nota es {nota}')
+    #print(f'La nota es {nota}')
     return nota
 
 #################################### Armar Imagen Resultados ##################################
@@ -526,7 +528,7 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
 
 
 def resultados_examenes(list_path):
-    respuestas_correctas = ['C', 'B', 'D', 'B', 'B', 'A', 'B', 'D', 'D', 'D']
+    respuestas_correctas = ['C', 'B', 'A', 'D', 'B', 'B', 'A', 'B', 'D', 'D']
     dict_nombre_resultado = {}
     h_img_salida = 0
     w_max_nombre = 0
