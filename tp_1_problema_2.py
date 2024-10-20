@@ -163,7 +163,7 @@ def obtener_datos_de_campos(campo: np.array, tipo: str) -> str:
 
 ################################# Recorte de respuestas ##############################
 
-def reduce_to_single_pixel_lines(lines, min_distance=20):
+def reducir_lineas_pixel(lines, min_distance=20):
     """
     
     """
@@ -195,8 +195,8 @@ def recortar_preguntas(img: np.array) -> list:
     vertical_lines = np.where(img_cols > vertical_threshold)[0]
     horizontal_lines = np.where(img_rows > horizontal_threshold)[0]
 
-    vertical_lines_single_pixel = reduce_to_single_pixel_lines(vertical_lines, min_distance=18)
-    horizontal_lines_single_pixel = reduce_to_single_pixel_lines(horizontal_lines, min_distance=15)
+    vertical_lines_single_pixel = reducir_lineas_pixel(vertical_lines, min_distance=18)
+    horizontal_lines_single_pixel = reducir_lineas_pixel(horizontal_lines, min_distance=15)
 
     question_images = []
     for j in range(0,4,2):
@@ -543,12 +543,4 @@ def user():
 
 paths_img=["PDI_Tp1_TUIA/src/examen_1.png","PDI_Tp1_TUIA/src/examen_2.png","PDI_Tp1_TUIA/src/examen_3.png","PDI_Tp1_TUIA/src/examen_4.png","PDI_Tp1_TUIA/src/examen_5.png"]
 
-# img = cv2.imread("PDI_Tp1_TUIA/src/examen_5.png", cv2.IMREAD_GRAYSCALE)
 resultados_examenes(paths_img)
-# coso = recortar_preguntas(img)
-# print(len(coso))
-# for ima in coso: 
-#     plt.figure(figsize=(10, 6))
-#     plt.imshow(ima, cmap='gray', vmin=0, vmax=255)  # Usar 'gray' para visualizar correctamente en escala de grises
-#     plt.axis('off')  # Ocultar los ejes
-#     plt.show()
