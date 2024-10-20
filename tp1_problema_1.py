@@ -22,6 +22,13 @@ img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 img.shape
 
 def ecualizacion_hist(img, M, N):
+    '''
+    Esta función devuelve una imagen ecualizada localmente
+    según los valores de largo y ancho de una ventana MxN.
+    img: imagen en escala de grises.
+    M: largo de la ventana.
+    N: ancho de la ventana.
+    '''
     h, w = img.shape
 
     # Definir bordes

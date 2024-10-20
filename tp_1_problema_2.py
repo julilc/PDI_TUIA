@@ -17,22 +17,20 @@ from rqst import *
 #Carga de paths
 paths_img = ['examen_1.png', 'examen_2.png', 'examen_3.png', 'examen_4.png', 'examen_5.png']
 paths_img = ['./src/'+i for i in paths_img]
-paths_img[0]
-examen = cv2.imread(paths_img[1], cv2.IMREAD_GRAYSCALE)
-imshow(examen)
-
 
 ################################# Encabezado #########################################
-def binarize(img: np.array) -> np.array:
-    ###
-    #img: imagen en escala de grises
-    #img_bin : imagen binarizada
-    ###
-    _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
+def binarize(img: np.array, tr: int = 150, maxv: int = 255) -> np.array:
+    '''
+    Esta función recibe una imagen y la binariza según vlaores de tr y maxv recibidos.
+    img: imagen en escala de grises
+    tr : thresh.
+    maxv: máximo valor de imagen de salida.
+    '''
+    _, img_bin = cv2.threshold(img, tr, maxv, cv2.THRESH_BINARY_INV)
     return img_bin
 
 
-def obtener_campos(examen: np.array):
+def obtener_campos(examen: np.array) -> tuple[np.array, np.array, np.array]:
     '''
     Devuelve 3 imágenes de los campos a analizar.
     examen : imagen en escala de grises del examen;
@@ -84,124 +82,84 @@ def obtener_campos(examen: np.array):
     x,y,w,h = linea_clase
     clase = encabezado[y-20:y+h-2,x:x+w]
 
-    # imshow(nombre)
-    # imshow(fecha)
+    #imshow(nombre)
+    #imshow(fecha)
     # imshow(clase)
 
     return nombre, fecha, clase
 
+def obtener_datos_de_campos(campo: np.array, tipo: str) -> str:
+    '''
+    Corrige los campos según el tipo de campo
+    campo: imagen del campo.
+    tipo: tipo de campo del que se trata (nombre, fecha, clase)
+    '''
+    campo_bin = binarize(campo.copy(), 210, 255)
+    #imshow(campo_bin)
+    num_letras, letras = cv2.connectedComponents(campo_bin, connectivity=8)
+    campo_color = cv2.cvtColor(campo.copy(), cv2.COLOR_GRAY2BGR)
+    # Lista para almacenar los rectángulos (x, y, w, h)
+    bounding_boxes = []
+    # Extrae las letras y almacenamos sus rectángulos
+    for label in range(0, num_letras): 
+        mask = letras == label
+        x, y, w, h = cv2.boundingRect(mask.astype(np.uint8))
+        bounding_boxes.append((x, y, w, h))  
+    
+    for x, y, w, h in bounding_boxes[1:]:
+        # Dibuja el rectángulo en la imagen original
+        cv2.rectangle(campo_color, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-# def obtener_datos_de_campos(campo: np.array, tipo: str):
-#     ###
-#     #Corrige los campos segun el tipo de campo
-#     #campo: imagen del campo.
-#     #tipo: tipo de campo del que se trata (nombre, fecha, clase)
-#     ###
-#     if tipo == 'nombre':
-#         ### Encontrar si hay 2 palabras
-#         if palabras == 2:
-#             ### Contar cantidad de letras
-#             if letras =< 25:
-#                 return f'Nombre: OK'
-#             else:
-#                 return f'Nombre : Mal'
-#         else:
-#             return f'Nombre: Mal'
-    
-#     elif tipo == 'fecha':
-#         ### Contar si la cantidad de caracteres son 8
-#         if caracteres == 8:
-#             return f'Fecha: OK'
-#         else:
-#             return f'Fecha : Mal'
-    
-#     elif tipo == 'clase':
-#         ### Contar si tieen 1 solo caracter
-#         if caracter == 1:
-#             return f'Clase : OK'
-#         else:
-#             return f'Clase : Mal'
+    #Si el campo está vacio, devuelve 'Mal'
+    if num_letras == 0:
+        return f'{type} : Mal'
+    # Muestra la imagen procesada con los rectángulos dibujados
+    imshow(campo_color)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    # Ordenar las letras por su coordenada 'x'
+    bounding_boxes = sorted(bounding_boxes, key=lambda box: box[0])
+    if tipo == 'nombre':
+        ##Primero, cuenta si hay mas de 25 palabras.        
+        if num_letras > 25:
+            return 'Mal'
         
-# obtener_datos_de_campos(nombre, 'a')
+        # Cuenta cuántas palabras hay según la distancia entre letras
+        palabras = 1
+        ux, uy, uw, uh = bounding_boxes[0]  # Primera letra
 
+        for x, y, w, h in bounding_boxes[1:]:
+            if x - (ux + uw) > 3:        # Si la distancia entre la letra actual y la anterior
+                palabras += 1            # es mayor a 3, empezó una nueva palabra
+            
+            ux, uy, uw, uh = x, y, w, h
 
-# def contar_componentes(campos):
-#     """
-#     Función que cuenta los caracteres de mi imagen
-#     """
-#     componentes={}
-#     con = 0
-    
-#     for imagen in campos:
-#       ret, thresh = cv2.threshold(imagen, 127, 255, 0)
-
-#       #cv2 Componets detecta los blancos como porciones de componentes --> hay que invertir los bits 
-#       img = cv2.bitwise_not(thresh)     
-#       output = cv2.connectedComponentsWithStats(img)
-#       caracteres = output[0]-1
+        # Verifica si hay exactamente 2 palabras
+        if palabras != 2:
+            return 'Nombre : Mal'
+        else:
+            return 'Nombre : OK'
         
-#       stats = output[2]
-#       sort_index = np.argsort(stats[:, 0])
-#       stats = stats[sort_index]
-      
-#       # Descartar las componentes de ancho pequeño
-#       for i in range(len(stats)):
-#         if i >= 1:
-#           anchura = stats[i][2]
-#           if anchura <= 2:
-#              caracteres = caracteres -1
+    elif tipo == 'fecha':
+        ### Contar si la cantidad de caracteres son 8
+        num_letras, letras = cv2.connectedComponents(campo_bin, connectivity=8)
+        #print(num_letras)
 
-#       espacios =  []
-#       for i in range(len(stats)):
-#         if i > 1: # para calcular la diferencia con el anterior
-#           val_espacio = stats[i][0]-(stats[i-1][0]) # calculo la diferencia entre la cordenada x de mi componente siguiente y la anterior
-#           if val_espacio > 9 and  i > 2: # > 2 Es para descartar el vector de mi primer componente. Porque las masyusculas tienden a ser mas anchas y no corresponden a espacios
-#             espacios.append(val_espacio)  
-       
-#       clave = f"campo_{con}"
-#       componentes[clave] = (caracteres, len(espacios))
-#       con = con + 1
+        if num_letras == 9:     #Se calcula que sean 9 componentes ya que
+            return f'Fecha: OK' #toma el fondo como una componente.
+        else:
+            return f'Fecha : Mal'
+    
+    elif tipo == 'clase':
+        ### Contar si tieen 1 solo caracter
+        if num_letras == 2:         #Se calcula que sean 2 componentes ya que
+            return f'Clase : OK'    #toma el fondo como una componente.
+        else:
+            return f'Clase : Mal'
 
-#     return componentes
 
-# def validar_caracteres(componentes):
 
-#   for val, keys in componentes.items():
-#     n_caracteres = keys[0]
-#     espacios = keys[1]
-
-#     if val == "campo_1":
-#        if n_caracteres == 1:
-#           print("CODE:OK")
-#        else:
-#           print("CODE: MAL")  
-       
-#     if val == "campo_2" or val == "campo_0": 
-#        if n_caracteres == 8:
-#           if val == "campo_0": 
-#             print("DATE:OK")
-#           else:
-#             print("ID:OK")
-#        else:
-#           if val == "campo_0": 
-#             print("DATE:MAL")
-#           else: 
-#             print("ID: MAL")  
-
-#     if val == "campo_3":
-#        if n_caracteres > 1 and  n_caracteres <= 25 and espacios == 1:
-#           print("NAME:OK")
-#        else:
-#           print("NAME: MAL")       
-   
-# def obtener_campo_nombre(examen):
-#     '''Función que evuelve los crop de los campos name'''
-#     renglon = obtener_renglon_de_datos(examen)
-#     # Como sé que el ultimo campo es el nombre, me quedo con ese
-#     campos_datos = obtener_datos_de_campos(renglon)
-#     name = campos_datos[3]
-#     #plt.figure(), plt.imshow(renglon, cmap='gray'),  plt.show(block=True)
-#     return name
 
 ################################# Recorte de respuestas ##############################
 
@@ -232,7 +190,7 @@ def recortar_preguntas(img: np.array) -> list:
             # cv2.destroyAllWindows()
     question_images = []
     sub_imagenes = sub_imagenes[::-1]
-    print(sub_imagenes)
+    #print(sub_imagenes)
     for i in range(len(sub_imagenes)):
         subimage = sub_imagenes[i]
 
@@ -282,6 +240,8 @@ def recortar_preguntas(img: np.array) -> list:
 
 def lineas_horizontales(img_bin: np.array ) -> tuple:
     '''
+    Encuentra líneas horizontales con el ancho máximo en la imagen
+    y con un alto máximo de 3.
     img_bin : imagen binarizada;
     rect_mas_ancho : linea de respuesta del examen.
     '''
@@ -329,6 +289,7 @@ def lineas_horizontales(img_bin: np.array ) -> tuple:
 
 def recortar_pregunta(pregunta: np.array, linea_preg: tuple) -> np.array:
     '''
+    Recorta la parte de respuesta del examen.
     pregunta: imagen escala de grises de pregunta del examen;
     linea_preg : linea horizontal de la pregunta del examen;
     sub_preguna: área de respuesta de la pregunta;
@@ -349,6 +310,8 @@ def recortar_pregunta(pregunta: np.array, linea_preg: tuple) -> np.array:
 
 def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
     '''
+    Detecta el/los caracter/es dentro del área de respuesta,
+    dividiéndolos por padres con sus hijos.
     sub_pregunta : área de respuesta de la pregunta;
     dict_contornos: diccionario clave contorno padre, valor
     contornos hijos;
@@ -402,6 +365,8 @@ def detectar_letra(sub_preg: np.array) -> tuple[dict, tuple]:
 
 def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
     '''
+    Clasifica qué letra es la de la respuesta, y devuelve una lista con
+    las letras encontradas dentro de una respuesta.
     dict_contornos: diccionario clave contorno padre, valor
     contornos hijos;
     contornos: total de contornos encontrados;
@@ -448,10 +413,13 @@ def clasificar_letra(dict_contornos: dict, contornos: tuple) -> list:
                 
 def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> str:
     '''
+    Corrige la pregunta según la letra contestada. Si está bien contestada
+    devuelve 'Ok', caso contrario (no contestó bien, no contestó o contestó más de una
+    letra), devuelve 'Mal'.
     respuesta: letras encontradas en la pregunta;
     i : número de pregunta;
     respuestas_correctas: lista con las respuestas correcta
-    del examen;
+    del examen contra la que se comparará las respuestas dadas;
     '''
     #print(i, respuesta)
     if len(respuesta) == 0:    #Si no hay ninguna letra
@@ -472,9 +440,11 @@ def corregir_pregunta(respuesta: list, i: int, respuestas_correctas: list) -> st
 
 def corregir_examen(preguntas: list, respuestas_correctas : list)-> None:
     '''
+    Corrige todas las preguntas de un examen.
     examen : imagen escala de grises del examen
     completo;
-    respuestas_corresctas: lista de respuestas correctas
+    respuestas_corresctas: ista con las respuestas correcta
+    del examen contra la que se comparará las respuestas dadas en el examen.
     '''
     nota = 0
     for i in range(len(preguntas)):
@@ -502,7 +472,7 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
     '''
     Esta función arma una imagen de círculo rojo o verde
     con el mismo alto que la imagen del nombre del alumno
-    según la nota recibida
+    según la nota recibida.
     nombre_alumno : imagen nombre del alumno,
     nota : nota obtenida en el examen
     '''
@@ -528,6 +498,10 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
 
 
 def resultados_examenes(list_path):
+    '''
+    Corrige todos los exámenes.
+    list_path: una lista con las ubicaciones de los archivos de los exámenes.
+    '''
     respuestas_correctas = ['C', 'B', 'A', 'D', 'B', 'B', 'A', 'B', 'D', 'D']
     dict_nombre_resultado = {}
     h_img_salida = 0
@@ -535,10 +509,13 @@ def resultados_examenes(list_path):
     
     #Corregir examen de cada alumno
     for i in range(len(list_path)):
-        
+        print(f'Examen: {i+1}')
         path_examen = list_path[i]
         examen = cv2.imread(path_examen,cv2.IMREAD_GRAYSCALE) 
-        nombre_alumno, _, _ = obtener_campos(examen)
+        nombre_alumno, fecha, clase = obtener_campos(examen)
+        print(obtener_datos_de_campos(nombre_alumno, 'nombre'))
+        print(obtener_datos_de_campos(fecha, 'fecha'))
+        print(obtener_datos_de_campos(clase, 'clase'))
         h, w = nombre_alumno.shape
         if w > w_max_nombre:
             w_max_nombre = w
