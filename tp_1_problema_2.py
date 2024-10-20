@@ -82,8 +82,8 @@ def obtener_campos(examen: np.array) -> tuple[np.array, np.array, np.array]:
     x,y,w,h = linea_clase
     clase = encabezado[y-20:y+h-2,x:x+w]
 
-    #imshow(nombre)
-    #imshow(fecha)
+    # imshow(nombre)
+    # imshow(fecha)
     # imshow(clase)
 
     return nombre, fecha, clase
@@ -114,9 +114,7 @@ def obtener_datos_de_campos(campo: np.array, tipo: str) -> str:
     if num_letras == 0:
         return f'{type} : Mal'
     # Muestra la imagen procesada con los rectángulos dibujados
-    #src\examen_1.pngimshow(campo_color)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+
 
     # Ordenar las letras por su coordenada 'x'
     bounding_boxes = sorted(bounding_boxes, key=lambda box: box[0])
@@ -438,7 +436,7 @@ def corregir_examen(preguntas: list, respuestas_correctas : list)-> None:
             print(f'Pregunta {i+1}: MAL')
     
     #Imprimo nota del examen
-    #print(f'La nota es {nota}')
+    print(f'La nota es {nota}')
     return nota
 
 #################################### Armar Imagen Resultados ##################################
@@ -472,19 +470,17 @@ def img_resultado(nombre_alumno: np.array, nota: int) -> np.array:
     return resultado
 
 
-def resultados_examenes(list_path):
+def resultados_examenes(list_path, respuestas_correctas):
     '''
     Corrige todos los exámenes.
     list_path: una lista con las ubicaciones de los archivos de los exámenes.
     '''
-    respuestas_correctas = ['C', 'B', 'A', 'D', 'B', 'B', 'A', 'B', 'D', 'D']
     dict_nombre_resultado = {}
     h_img_salida = 0
     w_max_nombre = 0
     
     #Corregir examen de cada alumno
-    for i in range(len(list_path)):
-        print("ACAAAAAAAAAAAAAA", i)
+    for i in range(len(list_path)-1):
         print(f'Examen: {i+1}')
         path_examen = list_path[i]
         examen = cv2.imread(path_examen,cv2.IMREAD_GRAYSCALE) 
@@ -534,13 +530,12 @@ def resultados_examenes(list_path):
 def user():
     resp = 'a'
     paths_img = []
+    respuestas_correctas = list(input('Ingrese la lista de respuestas correctas para corregir este examen. Deben ser ingresadas con una "," de separación (Ej: D,C):'))
     while resp != 'q':
         resp = input('Ingrese la ubicación del archivo examen o los arhivos examen, conteste "q" cuando haya terminado: ')
         paths_img.append(resp)
-    resultados_examenes(paths_img)
+    resultados_examenes(paths_img,respuestas_correctas )
 
-# user()
+user()
 
 paths_img=["PDI_Tp1_TUIA/src/examen_1.png","PDI_Tp1_TUIA/src/examen_2.png","PDI_Tp1_TUIA/src/examen_3.png","PDI_Tp1_TUIA/src/examen_4.png","PDI_Tp1_TUIA/src/examen_5.png"]
-
-resultados_examenes(paths_img)
