@@ -528,9 +528,14 @@ def resultados_examenes(list_path, respuestas_correctas):
 
 
 def user():
+    '''
+    Esta función interactúa con el usuario.
+    Solicita la lista con las respuestas correctas del exámen
+    y el path de la imágen de cada exámen.
+    '''
     resp = 'a'
     paths_img = []
-    respuestas_correctas = list(input('Ingrese la lista de respuestas correctas para corregir este examen. Deben ser ingresadas con una "," de separación (Ej: D,C):'))
+    respuestas_correctas = list(input('Ingrese la lista de respuestas correctas para corregir este examen. Deben ser ingresadas con una "," de separación (Ej: D,C):').split(','))
     while resp != 'q':
         resp = input('Ingrese la ubicación del archivo examen o los arhivos examen, conteste "q" cuando haya terminado: ')
         paths_img.append(resp)
