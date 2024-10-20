@@ -114,7 +114,7 @@ def obtener_datos_de_campos(campo: np.array, tipo: str) -> str:
     if num_letras == 0:
         return f'{type} : Mal'
     # Muestra la imagen procesada con los rectángulos dibujados
-    imshow(campo_color)
+    #src\examen_1.pngimshow(campo_color)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
@@ -508,7 +508,7 @@ def resultados_examenes(list_path):
     w_max_nombre = 0
     
     #Corregir examen de cada alumno
-    for i in range(len(list_path)):
+    for i in range(len(list_path)-1):
         print(f'Examen: {i+1}')
         path_examen = list_path[i]
         examen = cv2.imread(path_examen,cv2.IMREAD_GRAYSCALE) 
@@ -555,7 +555,15 @@ def resultados_examenes(list_path):
     plt.show()
 
 
-resultados_examenes(paths_img)
+def user():
+    resp = 'a'
+    paths_img = []
+    while resp != 'q':
+        resp = input('Ingrese la ubicación del archivo examen o los arhivos examen, conteste "q" cuando haya terminado: ')
+        paths_img.append(resp)
+    resultados_examenes(paths_img)
+
+user()
 
 
 
