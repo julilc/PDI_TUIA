@@ -163,76 +163,51 @@ def obtener_datos_de_campos(campo: np.array, tipo: str) -> str:
 
 ################################# Recorte de respuestas ##############################
 
+def reduce_to_single_pixel_lines(lines, min_distance=20):
+    """
+    
+    """
+    reduced_lines = []
+    current_start = lines[0]
+    for i in range(1, len(lines)):
+        if lines[i] - lines[i - 1] > min_distance:
+            reduced_lines.append((current_start + lines[i - 1]) // 2)
+            current_start = lines[i]
+    reduced_lines.append((current_start + lines[-1]) // 2)
+    return reduced_lines
 def recortar_preguntas(img: np.array) -> list:
     '''
-    Recorta pregunta dada una imagen del examen, devuelve una lista de imágenes de preguntas.
+    Dada una imagen de un examen, devuelve una lista de imágenes de cada pregunta recortada.
     img: imagen del examen;
     list: lista con una imagen por pregunta en el examen.
     '''
+    
+    _, img_th = cv2.threshold(img, 190, 255, cv2.THRESH_BINARY_INV)
 
-    _, img_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
-    # cv2.imshow('Thresholded Image', img_bin)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
-    sub_imagenes=[]
-    for i, contour in enumerate(contours):
-        x, y, w, h = cv2.boundingRect(contour)
-        if w > 50 and h > 50: 
-            sub_image = img[y:y+h, x:x+w]
-            
-            # Guardar en archivo las subimagenes
-            # cv2.imwrite(f'question_{i+1}.png', sub_image)
-            sub_imagenes.append(sub_image)
-            # cv2.imshow(f'Question {i+1}', sub_image)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+    img_th_ones = img_th // 255
+
+    img_cols = np.sum(img_th_ones, axis=0)
+    img_rows = np.sum(img_th_ones, axis=1)
+
+    vertical_threshold = 300 
+    horizontal_threshold = 450  
+
+    vertical_lines = np.where(img_cols > vertical_threshold)[0]
+    horizontal_lines = np.where(img_rows > horizontal_threshold)[0]
+
+    vertical_lines_single_pixel = reduce_to_single_pixel_lines(vertical_lines, min_distance=18)
+    horizontal_lines_single_pixel = reduce_to_single_pixel_lines(horizontal_lines, min_distance=15)
+
     question_images = []
-    sub_imagenes = sub_imagenes[::-1]
-    #print(sub_imagenes)
-    for i in range(len(sub_imagenes)):
-        subimage = sub_imagenes[i]
-
-        _, binary = cv2.threshold(subimage, 150, 255, cv2.THRESH_BINARY_INV)
-
-        horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (75, 1))
-
-
-        horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-
-
-        contours, _ = cv2.findContours(horizontal_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
-
-        # Muestra las Lineas horizontales detectadas
-        # subimage_with_lines = cv2.cvtColor(subimage, cv2.COLOR_GRAY2BGR)
-        # for contour in contours:
-        #     x, y, w, h = cv2.boundingRect(contour)
-        #     cv2.rectangle(subimage_with_lines, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # cv2.imshow('Detected Horizontal Lines', subimage_with_lines)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-        prev_y = 0
-        
-
-        for i, contour in enumerate(contours):
-            x, y, w, h = cv2.boundingRect(contour)
-            if i > 0:
-                question_img = subimage[prev_y:y, :]
-                # question_images.append(question_img)
-                
-                # Guardar las subimagenes en archivos 
-                # cv2.imwrite(f'question_{i}.png', question_img)
-                question_images.append(question_img)
-                #cv2.imshow(f'Question {i}', question_img)
-                #cv2.waitKey(0)
-                #cv2.destroyAllWindows()
-            
-            prev_y = y
+    for j in range(0,4,2):
+        for i in range(len(horizontal_lines_single_pixel)-1):
+            top = horizontal_lines_single_pixel[i]
+            bottom = horizontal_lines_single_pixel[i + 1]
+            left = vertical_lines_single_pixel[j]
+            right = vertical_lines_single_pixel[j + 1]
+            # Cortamos cada pregunta
+            sub_image = img[top:bottom, left:right]
+            question_images.append(sub_image)
     return question_images
 
 
@@ -508,7 +483,8 @@ def resultados_examenes(list_path):
     w_max_nombre = 0
     
     #Corregir examen de cada alumno
-    for i in range(len(list_path)-1):
+    for i in range(len(list_path)):
+        print("ACAAAAAAAAAAAAAA", i)
         print(f'Examen: {i+1}')
         path_examen = list_path[i]
         examen = cv2.imread(path_examen,cv2.IMREAD_GRAYSCALE) 
@@ -563,7 +539,16 @@ def user():
         paths_img.append(resp)
     resultados_examenes(paths_img)
 
-user()
+# user()
 
+paths_img=["PDI_Tp1_TUIA/src/examen_1.png","PDI_Tp1_TUIA/src/examen_2.png","PDI_Tp1_TUIA/src/examen_3.png","PDI_Tp1_TUIA/src/examen_4.png","PDI_Tp1_TUIA/src/examen_5.png"]
 
-
+# img = cv2.imread("PDI_Tp1_TUIA/src/examen_5.png", cv2.IMREAD_GRAYSCALE)
+resultados_examenes(paths_img)
+# coso = recortar_preguntas(img)
+# print(len(coso))
+# for ima in coso: 
+#     plt.figure(figsize=(10, 6))
+#     plt.imshow(ima, cmap='gray', vmin=0, vmax=255)  # Usar 'gray' para visualizar correctamente en escala de grises
+#     plt.axis('off')  # Ocultar los ejes
+#     plt.show()
