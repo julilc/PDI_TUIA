@@ -29,6 +29,7 @@ def ecualizacion_hist(img, M, N):
     M: largo de la ventana.
     N: ancho de la ventana.
     '''
+
     h, w = img.shape
 
     # Definir bordes

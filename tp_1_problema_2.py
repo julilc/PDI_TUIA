@@ -173,6 +173,7 @@ def reducir_lineas_pixel(lines, min_distance=20):
             current_start = lines[i]
     reduced_lines.append((current_start + lines[-1]) // 2)
     return reduced_lines
+
 def recortar_preguntas(img: np.array) -> list:
     '''
     Dada una imagen de un examen, devuelve una lista de imágenes de cada pregunta recortada.
